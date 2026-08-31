@@ -231,7 +231,7 @@
   <div id="empty" style="display:none;">Aucun dossier à afficher.</div>
 </main>
 
-<div style="text-align:center; padding:20px 10px 80px; font-size:11px; color:#aaa;">Version app : 2026-08-31-v19 (+ réclamation, + demande)</div>
+<div style="text-align:center; padding:20px 10px 80px; font-size:11px; color:#aaa;">Version app : 2026-08-31-v20 (bouton envoi email)</div>
 
 <button class="fab" onclick="ouvrirModal()">+</button>
 
@@ -506,6 +506,7 @@
         ${(d.creePar || d.modifiePar) ? `<div class="meta" style="font-size:11px;">Créé par ${escapeHtml(d.creePar || "?")}${d.modifiePar && d.modifiePar !== d.creePar ? " · modifié par " + escapeHtml(d.modifiePar) : ""}</div>` : ""}
         ${renderLiens(d.dossiersLies)}
         <div class="card-actions">
+          ${d.clientEmail ? `<a class="btn-small" href="mailto:${d.clientEmail}?subject=${encodeURIComponent('Dossier ' + (d.client || '') + ' - MEDITEC')}&body=${encodeURIComponent(d.notes || '')}">✉️ Email</a>` : ""}
           ${d.eventLink ? `<a class="btn-small" href="${d.eventLink}" target="_blank" rel="noopener">📅 Voir dans l'agenda</a>` : ""}
           <button class="btn-small" onclick="ouvrirModalEdition('${d.id}')">✏️ Modifier</button>
           ${d.nature !== "Fournisseur" ? `<button class="btn-small" onclick="ouvrirModalFournisseurLie('${d.id}')">🔗 Demande fournisseur</button>` : ""}
