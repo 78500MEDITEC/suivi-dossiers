@@ -172,6 +172,10 @@
     font-size: 15px;
     font-weight: 600;
   }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
   .btn-secondary {
     flex: none;
     background: #eee;
@@ -223,6 +227,11 @@
   <button class="filter-chip" data-nature="Client" onclick="filtrerNature('Client')">Clients</button>
   <button class="filter-chip" data-nature="Fournisseur" onclick="filtrerNature('Fournisseur')">Fournisseurs</button>
 </div>
+<div style="max-width:640px;margin:0 auto;padding:8px 12px 0;">
+  <select id="filtreSalarieSelect" onchange="filtrerSalarie()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:14px;">
+    <option value="tous">👤 Tous les salariés</option>
+  </select>
+</div>
 
 <div id="statusMsg"></div>
 
@@ -231,7 +240,7 @@
   <div id="empty" style="display:none;">Aucun dossier à afficher.</div>
 </main>
 
-<div style="text-align:center; padding:20px 10px 80px; font-size:11px; color:#aaa;">Version app : 2026-08-31-v20 (bouton envoi email)</div>
+<div style="text-align:center; padding:20px 10px 80px; font-size:11px; color:#aaa;">Version app : 2026-08-31-v21 (anti-double-clic + filtre salarié)</div>
 
 <button class="fab" onclick="ouvrirModal()">+</button>
 
@@ -403,7 +412,7 @@
 
     <div class="modal-actions">
       <button class="btn-secondary" onclick="fermerModalCloture()">Annuler</button>
-      <button class="btn-primary" onclick="confirmerCloture()">Confirmer</button>
+      <button class="btn-primary" id="clotureSubmitBtn" onclick="confirmerCloture()">Confirmer</button>
     </div>
   </div>
 </div>
@@ -418,6 +427,7 @@
   let salaries = [];
   let filtreActuel = "ouverts";
   let filtreNatureActuel = "tous";
+  let filtreSalarieActuel = "tous";
   let dossierEnCoursEdition = null; // null = création, sinon id du dossier en cours de modification
   let dossierLieEnCours = null; // id du dossier d'origine si on crée une demande fournisseur liée
 
@@ -436,6 +446,7 @@
       dossiers = data.dossiers || [];
       salaries = data.salaries || [];
       remplirListeSalaries();
+      remplirFiltreSalarie();
       if (data.calendarId) {
         document.getElementById("calendarHeaderLink").href =
           "https://calendar.google.com/calendar/u/0/r?cid=" + encodeURIComponent(data.calendarId);
@@ -461,6 +472,25 @@
     rendre();
   }
 
+  function remplirFiltreSalarie() {
+    const select = document.getElementById("filtreSalarieSelect");
+    const valeurActuelle = select.value || "tous";
+    select.innerHTML = '<option value="tous">👤 Tous les salariés</option>';
+    salaries.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.nom;
+      opt.textContent = s.nom;
+      select.appendChild(opt);
+    });
+    select.value = (valeurActuelle === "tous" || salaries.some(s => s.nom === valeurActuelle)) ? valeurActuelle : "tous";
+    filtreSalarieActuel = select.value;
+  }
+
+  function filtrerSalarie() {
+    filtreSalarieActuel = document.getElementById("filtreSalarieSelect").value;
+    rendre();
+  }
+
   function rendre() {
     const liste = document.getElementById("liste");
     const empty = document.getElementById("empty");
@@ -468,6 +498,7 @@
 
     let items = dossiers;
     if (filtreNatureActuel !== "tous") items = items.filter(d => (d.nature || "Client") === filtreNatureActuel);
+    if (filtreSalarieActuel && filtreSalarieActuel !== "tous") items = items.filter(d => d.salarie === filtreSalarieActuel);
     if (filtreActuel === "ouverts") items = items.filter(d => d.statut !== "Clôturé");
     if (filtreActuel === "relance") items = items.filter(d => d.statut === "Relance");
     if (filtreActuel === "clotures") items = items.filter(d => d.statut === "Clôturé");
@@ -586,6 +617,7 @@
     document.getElementById("modalTitle").textContent = "Nouveau dossier";
     document.getElementById("modalSubmitBtn").textContent = "Créer le dossier";
     document.getElementById("modalSubmitBtn").onclick = creerDossier;
+    document.getElementById("modalSubmitBtn").disabled = false;
     document.getElementById("f_statutBox").style.display = "none";
     document.getElementById("f_nature").value = "Client";
     document.getElementById("f_societe").value = "";
@@ -613,6 +645,7 @@
     document.getElementById("modalTitle").textContent = "Modifier le dossier";
     document.getElementById("modalSubmitBtn").textContent = "Enregistrer les modifications";
     document.getElementById("modalSubmitBtn").onclick = enregistrerModification;
+    document.getElementById("modalSubmitBtn").disabled = false;
     document.getElementById("f_statutBox").style.display = "block";
     remplirSelectQui("f_qui");
 
@@ -721,6 +754,8 @@
   }
 
   async function creerDossier() {
+    const btn = document.getElementById("modalSubmitBtn");
+    if (btn.disabled) return; // déjà en cours de traitement, on ignore le clic
     const qui = document.getElementById("f_qui").value;
     if (!qui) { alert("Merci d'indiquer votre nom avant de continuer."); return; }
     const client = document.getElementById("f_client").value.trim();
@@ -748,6 +783,7 @@
     }
 
     afficherMessage("Création en cours...");
+    btn.disabled = true;
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
@@ -761,6 +797,8 @@
       chargerDossiers();
     } catch (err) {
       afficherMessage("Erreur lors de la création.", true);
+    } finally {
+      btn.disabled = false;
     }
   }
 
@@ -770,6 +808,7 @@
     const d = dossiers.find(x => x.id === id);
     const estFournisseur = d && d.nature === "Fournisseur";
     dossierEnCoursCloture = id;
+    document.getElementById("clotureSubmitBtn").disabled = false;
     remplirSelectQui("c_qui");
     document.getElementById("c_suite").style.display = estFournisseur ? "none" : "block";
     document.getElementById("c_suite_fournisseur").style.display = estFournisseur ? "block" : "none";
@@ -800,6 +839,8 @@
   }
 
   async function confirmerCloture() {
+    const btn = document.getElementById("clotureSubmitBtn");
+    if (btn.disabled) return;
     const qui = document.getElementById("c_qui").value;
     if (!qui) { alert("Merci d'indiquer votre nom avant de continuer."); return; }
     const suiteVisible = document.getElementById("c_suite").style.display !== "none" ? "c_suite" : "c_suite_fournisseur";
@@ -822,6 +863,7 @@
     if (precisions) suiteDonnee += " — " + precisions;
 
     afficherMessage("Mise à jour...");
+    btn.disabled = true;
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
@@ -833,10 +875,14 @@
       chargerDossiers();
     } catch (err) {
       afficherMessage("Erreur lors de la mise à jour.", true);
+    } finally {
+      btn.disabled = false;
     }
   }
 
   async function enregistrerModification() {
+    const btn = document.getElementById("modalSubmitBtn");
+    if (btn.disabled) return;
     const qui = document.getElementById("f_qui").value;
     if (!qui) { alert("Merci d'indiquer votre nom avant de continuer."); return; }
     const client = document.getElementById("f_client").value.trim();
@@ -864,6 +910,7 @@
     }
 
     afficherMessage("Enregistrement...");
+    btn.disabled = true;
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
         method: "POST",
@@ -880,6 +927,8 @@
       chargerDossiers();
     } catch (err) {
       afficherMessage("Erreur lors de l'enregistrement.", true);
+    } finally {
+      btn.disabled = false;
     }
   }
 
