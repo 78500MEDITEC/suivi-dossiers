@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Suivi Dossiers MEDITEC</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a5fb4">
+<link rel="icon" href="icon-192.png">
+
+<!-- iOS : ouverture en plein écran sans barre de navigateur -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Suivi Dossiers">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bleu: #1a5fb4;
+    --vert: #2ec27e;
+    --orange: #e5a50a;
+    --gris: #77767b;
+    --fond: #f6f5f4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--fond);
+    color: #241f31;
+  }
+  header {
+    background: var(--bleu);
+    color: white;
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  #refreshBtn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  main { padding: 12px; max-width: 640px; margin: 0 auto; }
+
+  .fab {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bleu);
+    color: white;
+    border: none;
+    font-size: 28px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    z-index: 20;
+  }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border-left: 5px solid var(--gris);
+  }
+  .card.statut-Nouveau { border-left-color: var(--bleu); }
+  .card.statut-En.cours { border-left-color: var(--gris); }
+  .card.statut-Relance { border-left-color: var(--orange); }
+  .card.statut-Clôturé { border-left-color: var(--vert); opacity: 0.6; }
+
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .client { font-weight: 600; font-size: 16px; }
+  .salarie-avatar {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: -0.5px;
+  }
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: #eee;
+    white-space: nowrap;
+    margin-left: 8px;
+  }
+  .meta { font-size: 13px; color: var(--gris); margin-top: 4px; }
+  .notes { font-size: 13px; margin-top: 6px; color: #444; }
+  .card-actions { margin-top: 10px; display: flex; gap: 8px; }
+  .btn-small {
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: white;
+    text-decoration: none;
+    color: #241f31;
+    display: inline-block;
+  }
+  .btn-close { color: var(--vert); border-color: var(--vert); }
+
+  #empty { text-align: center; color: var(--gris); padding: 40px 20px; }
+
+  #filterBar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 12px 0;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .filter-chip {
+    flex: none;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: white;
+    white-space: nowrap;
+  }
+  .filter-chip.active { background: var(--bleu); color: white; border-color: var(--bleu); }
+
+  #natureFilterBar {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px 0;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  /* Modale d'ajout */
+  #modalOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 30;
+    align-items: flex-end;
+  }
+  #modalOverlay.open { display: flex; }
+  #modal {
+    background: white;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+  }
+  #modal h2 { margin-top: 0; font-size: 18px; }
+  label { display: block; font-size: 13px; color: var(--gris); margin: 12px 0 4px; }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn-primary {
+    flex: 1;
+    background: var(--bleu);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    flex: none;
+    background: #eee;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  #statusMsg { text-align: center; padding: 10px; font-size: 13px; color: var(--gris); }
+
+  #clotureModalOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 30;
+    align-items: flex-end;
+  }
+  #clotureModalOverlay.open { display: flex; }
+  #clotureModal {
+    background: white;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+  }
+  #clotureModal h2 { margin-top: 0; font-size: 18px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Suivi Dossiers MEDITEC</h1>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="https://calendar.google.com/calendar/" target="_blank" rel="noopener" id="calendarHeaderLink" style="color:white; text-decoration:none; font-size:13px; background:rgba(255,255,255,0.2); padding:8px 12px; border-radius:8px;">📅 Google Agenda</a>
+    <button id="refreshBtn" onclick="chargerDossiers()">⟳</button>
+  </div>
+</header>
+
+<div id="filterBar">
+  <button class="filter-chip active" data-filtre="ouverts" onclick="filtrer('ouverts')">Ouverts</button>
+  <button class="filter-chip" data-filtre="relance" onclick="filtrer('relance')">En relance</button>
+  <button class="filter-chip" data-filtre="tous" onclick="filtrer('tous')">Tous</button>
+  <button class="filter-chip" data-filtre="clotures" onclick="filtrer('clotures')">Clôturés</button>
+</div>
+<div id="natureFilterBar">
+  <button class="filter-chip active" data-nature="tous" onclick="filtrerNature('tous')">Tous</button>
+  <button class="filter-chip" data-nature="Client" onclick="filtrerNature('Client')">Clients</button>
+  <button class="filter-chip" data-nature="Fournisseur" onclick="filtrerNature('Fournisseur')">Fournisseurs</button>
+</div>
+<div style="max-width:640px;margin:0 auto;padding:8px 12px 0;">
+  <select id="filtreSalarieSelect" onchange="filtrerSalarie()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:14px;">
+    <option value="tous">👤 Tous les salariés</option>
+  </select>
+</div>
+<div style="max-width:640px;margin:0 auto;padding:8px 12px 0;">
+  <select id="filtreEtablissementSelect" onchange="filtrerEtablissement()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:14px;">
+    <option value="tous">🏥 Tous les établissements</option>
+  </select>
+</div>
+
+<div id="statusMsg"></div>
+
+<main>
+  <div id="liste"></div>
+  <div id="empty" style="display:none;">Aucun dossier à afficher.</div>
+</main>
+
+<div style="text-align:center; padding:20px 10px 80px; font-size:11px; color:#aaa;">Version app : 2026-08-31-v25 (SMS à l'émetteur)</div>
+
+<button class="fab" onclick="ouvrirModal()">+</button>
+
+<div id="modalOverlay" onclick="fermerModalSiFond(event)">
+  <div id="modal">
+    <h2 id="modalTitle">Nouveau dossier</h2>
+
+    <label>Votre nom *</label>
+    <select id="f_qui">
+      <option value="">— Qui êtes-vous ? —</option>
+    </select>
+
+    <label>Nature du contact *</label>
+    <select id="f_nature" onchange="onChangeNature()">
+      <option value="Client">Client</option>
+      <option value="Fournisseur">Fournisseur</option>
+    </select>
+
+    <label id="lbl_client">Client *</label>
+    <input type="text" id="f_client" placeholder="Nom du client">
+
+    <div id="f_societeBox" style="display:none;">
+      <label>Société (fournisseur)</label>
+      <input type="text" id="f_societe" placeholder="Nom de la société">
+    </div>
+
+    <label id="lbl_clientEmail">Email du client</label>
+    <input type="email" id="f_clientEmail" placeholder="client@exemple.com">
+
+    <label id="lbl_clientTelephone">Téléphone du client</label>
+    <input type="tel" id="f_clientTelephone" placeholder="06 12 34 56 78">
+
+    <label id="lbl_type">Type de demande *</label>
+    <select id="f_type">
+      <option value="Commande">Commande</option>
+      <option value="Demande">Demande</option>
+      <option value="Intervention">Intervention</option>
+      <option value="Prise de mesure">Prise de mesure</option>
+      <option value="Réclamation">Réclamation</option>
+      <option value="Rendez-vous - Magasin">Rendez-vous au magasin</option>
+      <option value="Rendez-vous - Centre">Rendez-vous en centre</option>
+      <option value="Rendez-vous - Domicile">Rendez-vous à domicile</option>
+    </select>
+    <select id="f_type_fournisseur" style="display:none;" onchange="onChangeTypeFournisseur()">
+      <option value="Visite commerciale">Visite commerciale</option>
+      <option value="Appel tarifs">Appel / tarifs</option>
+      <option value="Nouveau produit">Présentation nouveau produit</option>
+      <option value="Retour produit">Retour produit</option>
+      <option value="SAV - Garantie fournisseur">SAV / Garantie fournisseur</option>
+      <option value="Litige fournisseur">Litige fournisseur</option>
+      <option value="Suivi d'avoir">Suivi d'avoir</option>
+      <option value="Commande fournisseur">Commande fournisseur</option>
+      <option value="Autre">Autre</option>
+    </select>
+
+    <div id="f_montantAvoirBox" style="display:none;">
+      <label>Montant avoir attendu (€)</label>
+      <input type="number" id="f_montantAvoir" step="0.01" placeholder="0.00">
+    </div>
+
+    <label>Canal de contact *</label>
+    <select id="f_canal">
+      <option value="Téléphone">Téléphone</option>
+      <option value="Email">Email</option>
+      <option value="Boutique">Boutique</option>
+      <option value="Démarchage">Démarchage</option>
+    </select>
+
+    <label id="lbl_ref">N° référence Orthopmust (optionnel)</label>
+    <input type="text" id="f_ref" placeholder="Une fois créé dans Orthopmust">
+
+    <div id="f_referentBox">
+      <label>Établissement (optionnel)</label>
+      <input type="text" id="f_etablissement" placeholder="Ex : CH Simone Veil" style="margin-bottom:10px;">
+
+      <label>Référent / Tuteur / Ergo (optionnel)</label>
+      <select id="f_referentType">
+        <option value="">— Aucun —</option>
+        <option value="Référent">Référent</option>
+        <option value="Tuteur">Tuteur</option>
+        <option value="Ergothérapeute">Ergothérapeute</option>
+        <option value="Autre">Autre</option>
+      </select>
+      <input type="text" id="f_referentNom" placeholder="Nom du référent" style="margin-top:6px;">
+      <input type="text" id="f_referentContact" placeholder="Téléphone ou email du référent" style="margin-top:6px;">
+    </div>
+
+    <label>Salarié assigné *</label>
+    <select id="f_salarie_select" onchange="selectionnerSalarie()">
+      <option value="">— Choisir —</option>
+      <option value="__nouveau__">+ Nouveau salarié...</option>
+    </select>
+    <div id="nouveauSalarieBox" style="display:none; margin-top:8px;">
+      <input type="text" id="f_nouveau_nom" placeholder="Nom du nouveau salarié">
+      <input type="email" id="f_nouveau_email" placeholder="Email du nouveau salarié" style="margin-top:6px;">
+      <button type="button" class="btn-small" style="margin-top:6px;" onclick="ajouterSalarie()">Ajouter ce salarié</button>
+    </div>
+    <input type="hidden" id="f_salarie">
+    <input type="hidden" id="f_email">
+
+    <label>Date et heure du rendez-vous (optionnel)</label>
+    <input type="datetime-local" id="f_rdv">
+    <div style="font-size:12px;color:#77767b;margin-top:4px;">Si renseigné, un événement Google Agenda est créé immédiatement à cet horaire précis (invitation envoyée au salarié). Sinon, une relance générique sera programmée automatiquement.</div>
+
+    <div id="f_statutBox" style="display:none;">
+      <label>Statut</label>
+      <select id="f_statut">
+        <option value="Nouveau">Nouveau</option>
+        <option value="En cours">En cours</option>
+        <option value="Relance">Relance</option>
+        <option value="Clôturé">Clôturé</option>
+      </select>
+    </div>
+
+    <label>Notes</label>
+    <textarea id="f_notes" placeholder="Détails de la demande..."></textarea>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fermerModal()">Annuler</button>
+      <button class="btn-primary" id="modalSubmitBtn" onclick="creerDossier()">Créer le dossier</button>
+    </div>
+  </div>
+</div>
+
+<div id="clotureModalOverlay" onclick="fermerModalSiFondCloture(event)">
+  <div id="clotureModal">
+    <h2>Suite donnée</h2>
+
+    <label>Votre nom *</label>
+    <select id="c_qui">
+      <option value="">— Qui êtes-vous ? —</option>
+    </select>
+
+    <div id="c_repondreBox" style="display:none; margin-top:8px; gap:8px;">
+      <button type="button" class="btn-small" id="c_repondreBtn" onclick="repondreEmetteur()">✉️ Répondre à l'émetteur</button>
+      <button type="button" class="btn-small" id="c_smsBtn" onclick="repondreEmetteurSMS()">💬 SMS à l'émetteur</button>
+    </div>
+
+    <label>Quelle suite ? *</label>
+    <select id="c_suite" onchange="onChangeSuite()">
+      <option value="Commande passée">Commande passée</option>
+      <option value="Devis envoyé">Devis envoyé</option>
+      <option value="RDV pris">RDV pris</option>
+      <option value="Intervention réalisée">Intervention réalisée</option>
+      <option value="Mesure prise">Mesure prise</option>
+      <option value="Refusé par le client">Refusé par le client</option>
+      <option value="Pas de suite">Pas de suite</option>
+      <option value="À relancer">À relancer plus tard</option>
+      <option value="Autre">Autre (préciser)</option>
+    </select>
+
+    <select id="c_suite_fournisseur" style="display:none;" onchange="onChangeSuite()">
+      <option value="Avoir reçu">Avoir reçu</option>
+      <option value="Avoir refusé">Avoir refusé par le fournisseur</option>
+      <option value="Retour accepté">Retour accepté par le fournisseur</option>
+      <option value="Retour refusé">Retour refusé</option>
+      <option value="SAV pris en charge">SAV pris en charge</option>
+      <option value="Commande passée">Commande passée</option>
+      <option value="Pas de réponse du fournisseur">Pas de réponse du fournisseur</option>
+      <option value="À relancer">À relancer plus tard</option>
+      <option value="Autre">Autre (préciser)</option>
+    </select>
+
+    <div id="c_relanceBox" style="display:none;">
+      <label>Relancer le</label>
+      <input type="date" id="c_relanceDate">
+      <div style="font-size:12px;color:#77767b;margin-top:4px;">Le dossier reste ouvert et reviendra dans "En relance" à cette date.</div>
+    </div>
+
+    <div id="c_autreBox" style="display:none;">
+      <label>Préciser</label>
+      <input type="text" id="c_autreTexte" placeholder="Décrire la suite donnée">
+    </div>
+
+    <label>Précisions complémentaires (optionnel)</label>
+    <textarea id="c_precisions" placeholder="Détails additionnels..."></textarea>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fermerModalCloture()">Annuler</button>
+      <button class="btn-primary" id="clotureSubmitBtn" onclick="confirmerCloture()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==================== CONFIGURATION — À COMPLÉTER ====================
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyP5USN867-ghMHH4NB4HcXuVHXBa58iW3oOQi_tQESC7TKsh2pabIS6Gi2XrDqvYV74w/exec";
+  const ACCESS_TOKEN = "Med78500-2375";
+  // =======================================================================
+
+  let dossiers = [];
+  let salaries = [];
+  let filtreActuel = "ouverts";
+  let filtreNatureActuel = "tous";
+  let filtreSalarieActuel = "tous";
+  let filtreEtablissementActuel = "tous";
+  let dossierEnCoursEdition = null; // null = création, sinon id du dossier en cours de modification
+  let dossierLieEnCours = null; // id du dossier d'origine si on crée une demande fournisseur liée
+
+  function afficherMessage(txt, isError) {
+    const el = document.getElementById("statusMsg");
+    el.textContent = txt;
+    el.style.color = isError ? "#c01c28" : "#77767b";
+  }
+
+  async function chargerDossiers() {
+    afficherMessage("Chargement...");
+    try {
+      const res = await fetch(`${APPS_SCRIPT_URL}?token=${encodeURIComponent(ACCESS_TOKEN)}`);
+      const data = await res.json();
+      if (data.error) { afficherMessage(data.error, true); return; }
+      dossiers = data.dossiers || [];
+      salaries = data.salaries || [];
+      remplirListeSalaries();
+      remplirFiltreSalarie();
+      remplirFiltreEtablissement();
+      if (data.calendarId) {
+        document.getElementById("calendarHeaderLink").href =
+          "https://calendar.google.com/calendar/u/0/r?cid=" + encodeURIComponent(data.calendarId);
+      }
+      afficherMessage("");
+      rendre();
+    } catch (err) {
+      afficherMessage("Erreur de connexion — vérifiez votre réseau ou l'URL configurée.", true);
+    }
+  }
+
+  function filtrer(f) {
+    filtreActuel = f;
+    document.querySelectorAll(".filter-chip[data-filtre]").forEach(b => b.classList.remove("active"));
+    document.querySelector(`.filter-chip[data-filtre="${f}"]`).classList.add("active");
+    rendre();
+  }
+
+  function filtrerNature(n) {
+    filtreNatureActuel = n;
+    document.querySelectorAll(".filter-chip[data-nature]").forEach(b => b.classList.remove("active"));
+    document.querySelector(`.filter-chip[data-nature="${n}"]`).classList.add("active");
+    rendre();
+  }
+
+  function remplirFiltreSalarie() {
+    const select = document.getElementById("filtreSalarieSelect");
+    const valeurActuelle = select.value || "tous";
+    select.innerHTML = '<option value="tous">👤 Tous les salariés</option>';
+    salaries.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.nom;
+      opt.textContent = s.nom;
+      select.appendChild(opt);
+    });
+    select.value = (valeurActuelle === "tous" || salaries.some(s => s.nom === valeurActuelle)) ? valeurActuelle : "tous";
+    filtreSalarieActuel = select.value;
+  }
+
+  function filtrerSalarie() {
+    filtreSalarieActuel = document.getElementById("filtreSalarieSelect").value;
+    rendre();
+  }
+
+  function remplirFiltreEtablissement() {
+    const select = document.getElementById("filtreEtablissementSelect");
+    const valeurActuelle = select.value || "tous";
+    const etablissements = [...new Set(dossiers.map(d => d.etablissement).filter(Boolean))].sort();
+    select.innerHTML = '<option value="tous">🏥 Tous les établissements</option>';
+    etablissements.forEach(e => {
+      const opt = document.createElement("option");
+      opt.value = e;
+      opt.textContent = e;
+      select.appendChild(opt);
+    });
+    select.value = (valeurActuelle === "tous" || etablissements.includes(valeurActuelle)) ? valeurActuelle : "tous";
+    filtreEtablissementActuel = select.value;
+  }
+
+  function filtrerEtablissement() {
+    filtreEtablissementActuel = document.getElementById("filtreEtablissementSelect").value;
+    rendre();
+  }
+
+  function rendre() {
+    const liste = document.getElementById("liste");
+    const empty = document.getElementById("empty");
+    liste.innerHTML = "";
+
+    let items = dossiers;
+    if (filtreNatureActuel !== "tous") items = items.filter(d => (d.nature || "Client") === filtreNatureActuel);
+    if (filtreSalarieActuel && filtreSalarieActuel !== "tous") items = items.filter(d => d.salarie === filtreSalarieActuel);
+    if (filtreEtablissementActuel && filtreEtablissementActuel !== "tous") items = items.filter(d => d.etablissement === filtreEtablissementActuel);
+    if (filtreActuel === "ouverts") items = items.filter(d => d.statut !== "Clôturé");
+    if (filtreActuel === "relance") items = items.filter(d => d.statut === "Relance");
+    if (filtreActuel === "clotures") items = items.filter(d => d.statut === "Clôturé");
+
+    // Tri : les plus urgents (relance, ancienneté) en premier
+    items.sort((a, b) => (b.nbRelances || 0) - (a.nbRelances || 0));
+
+    if (items.length === 0) {
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+
+    items.forEach(d => {
+      const card = document.createElement("div");
+      card.className = `card statut-${d.statut}`;
+      card.id = "dossier-" + d.id;
+      const dateRelance = d.dateRelance
+        ? new Date(d.dateRelance).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        : "—";
+      const coordsClient = [d.clientEmail, d.clientTelephone].filter(Boolean).join(" · ");
+      const estFournisseur = d.nature === "Fournisseur";
+      card.innerHTML = `
+        <div class="card-top">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span class="salarie-avatar" style="background:${getCouleurSalarie(d.salarie)}" title="${escapeHtml(d.salarie || '')}">${getInitiales(d.salarie)}</span>
+            <span class="client">${estFournisseur ? "🏭 " : ""}${escapeHtml(d.client || "—")}${d.societe ? " (" + escapeHtml(d.societe) + ")" : ""}</span>
+          </div>
+          <span class="badge">${escapeHtml(d.statut || "")}</span>
+        </div>
+        ${coordsClient ? `<div class="meta">📞 ${escapeHtml(coordsClient)}</div>` : ""}
+        <div class="meta">${escapeHtml(d.type || "")}${d.canal ? " · via " + escapeHtml(d.canal) : ""} · Assigné à ${escapeHtml(d.salarie || "—")}</div>
+        <div class="meta">Date prévue : ${dateRelance}${d.nbRelances ? " · " + d.nbRelances + " relance(s)" : ""}</div>
+        ${d.refOrthopmust ? `<div class="meta">Réf. : ${escapeHtml(d.refOrthopmust)}</div>` : ""}
+        ${d.montantAvoir ? `<div class="meta">💶 Avoir attendu : ${escapeHtml(String(d.montantAvoir))} €</div>` : ""}
+        ${d.referentNom ? `<div class="meta">👥 ${escapeHtml(d.referentType || "Référent")} : ${escapeHtml(d.referentNom)}${d.referentContact ? " — " + escapeHtml(d.referentContact) : ""}</div>` : ""}
+        ${d.etablissement ? `<div class="meta">🏥 ${escapeHtml(d.etablissement)}</div>` : ""}
+        ${d.notes ? `<div class="notes">${escapeHtml(d.notes)}</div>` : ""}
+        ${d.suiteDonnee ? `<div class="notes" style="white-space:pre-wrap;">🗂️ Historique :\n${escapeHtml(d.suiteDonnee)}</div>` : ""}
+        ${(d.creePar || d.modifiePar) ? `<div class="meta" style="font-size:11px;">Créé par ${escapeHtml(d.creePar || "?")}${d.modifiePar && d.modifiePar !== d.creePar ? " · modifié par " + escapeHtml(d.modifiePar) : ""}</div>` : ""}
+        ${renderLiens(d.dossiersLies)}
+        <div class="card-actions">
+          ${d.clientEmail ? `<a class="btn-small" href="mailto:${d.clientEmail}?subject=${encodeURIComponent('Dossier ' + (d.client || '') + ' - MEDITEC')}&body=${encodeURIComponent(d.notes || '')}">✉️ Email</a>` : ""}
+          ${d.clientTelephone ? `<a class="btn-small" href="sms:${d.clientTelephone.replace(/\s+/g,'')}?&body=${encodeURIComponent('Bonjour ' + (d.client || '') + ', ')}">💬 SMS</a>` : ""}
+          ${d.eventLink ? `<a class="btn-small" href="${d.eventLink}" target="_blank" rel="noopener">📅 Voir dans l'agenda</a>` : ""}
+          <button class="btn-small" onclick="ouvrirModalEdition('${d.id}')">✏️ Modifier</button>
+          ${d.nature !== "Fournisseur" ? `<button class="btn-small" onclick="ouvrirModalFournisseurLie('${d.id}')">🔗 Demande fournisseur</button>` : ""}
+          ${d.statut !== "Clôturé"
+            ? `<button class="btn-small btn-close" onclick="cloturerDossier('${d.id}')">✓ Marquer traité</button>`
+            : `<button class="btn-small" onclick="cloturerDossier('${d.id}')">✎ Modifier la suite</button>`}
+        </div>
+      `;
+      liste.appendChild(card);
+    });
+  }
+
+  const PALETTE_SALARIES = ["#1a5fb4","#e66100","#2ec27e","#c01c28","#813d9c","#0891b2","#e35c9a","#986a44","#787804","#26a269"];
+
+  function getCouleurSalarie(nom) {
+    if (!nom) return "#999";
+    const idx = salaries.findIndex(s => s.nom === nom);
+    if (idx === -1) return "#999";
+    return PALETTE_SALARIES[idx % PALETTE_SALARIES.length];
+  }
+
+  function getInitiales(nom) {
+    if (!nom) return "?";
+    const parties = nom.trim().split(/\s+/);
+    if (parties.length === 1) return parties[0].substring(0, 2).toUpperCase();
+    return (parties[0][0] + parties[1][0]).toUpperCase();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function renderLiens(dossiersLiesStr) {
+    const ids = dossiersLiesStr ? String(dossiersLiesStr).split(",").map(s => s.trim()).filter(Boolean) : [];
+    if (ids.length === 0) return "";
+    const liens = ids.map(id => {
+      const d2 = dossiers.find(x => x.id === id);
+      if (!d2) return "";
+      const icone = d2.nature === "Fournisseur" ? "🏭" : "👤";
+      return `<button class="btn-small" onclick="allerAuDossier('${id}')">🔗 ${icone} ${escapeHtml(d2.client || "?")}</button>`;
+    }).join(" ");
+    return liens ? `<div class="card-actions" style="margin-top:4px;">${liens}</div>` : "";
+  }
+
+  function allerAuDossier(id) {
+    filtreActuel = "tous";
+    filtreNatureActuel = "tous";
+    document.querySelectorAll(".filter-chip[data-filtre]").forEach(b => b.classList.remove("active"));
+    document.querySelector('.filter-chip[data-filtre="tous"]').classList.add("active");
+    document.querySelectorAll(".filter-chip[data-nature]").forEach(b => b.classList.remove("active"));
+    document.querySelector('.filter-chip[data-nature="tous"]').classList.add("active");
+    rendre();
+    setTimeout(() => {
+      const el = document.getElementById("dossier-" + id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.style.transition = "background 0.4s";
+        el.style.background = "#fff3cd";
+        setTimeout(() => { el.style.background = ""; }, 2000);
+      }
+    }, 50);
+  }
+
+  function onChangeNature() {
+    const estFournisseur = document.getElementById("f_nature").value === "Fournisseur";
+    document.getElementById("lbl_client").textContent = estFournisseur ? "Fournisseur / Contact *" : "Client *";
+    document.getElementById("f_client").placeholder = estFournisseur ? "Nom du représentant / contact" : "Nom du client";
+    document.getElementById("lbl_clientEmail").textContent = estFournisseur ? "Email du fournisseur" : "Email du client";
+    document.getElementById("lbl_clientTelephone").textContent = estFournisseur ? "Téléphone du fournisseur" : "Téléphone du client";
+    document.getElementById("f_societeBox").style.display = estFournisseur ? "block" : "none";
+    document.getElementById("f_type").style.display = estFournisseur ? "none" : "block";
+    document.getElementById("f_type_fournisseur").style.display = estFournisseur ? "block" : "none";
+    document.getElementById("lbl_type").textContent = estFournisseur ? "Type de contact *" : "Type de demande *";
+    document.getElementById("lbl_ref").textContent = estFournisseur ? "N° réf. (retour / SAV / avoir) (optionnel)" : "N° référence Orthopmust (optionnel)";
+    document.getElementById("f_referentBox").style.display = estFournisseur ? "none" : "block";
+    if (estFournisseur) {
+      onChangeTypeFournisseur();
+    } else {
+      document.getElementById("f_montantAvoirBox").style.display = "none";
+    }
+  }
+
+  function onChangeTypeFournisseur() {
+    const estAvoir = document.getElementById("f_type_fournisseur").value === "Suivi d'avoir";
+    document.getElementById("f_montantAvoirBox").style.display = estAvoir ? "block" : "none";
+  }
+
+  function ouvrirModal() {
+    dossierEnCoursEdition = null;
+    dossierLieEnCours = null;
+    document.getElementById("modalTitle").textContent = "Nouveau dossier";
+    document.getElementById("modalSubmitBtn").textContent = "Créer le dossier";
+    document.getElementById("modalSubmitBtn").onclick = creerDossier;
+    document.getElementById("modalSubmitBtn").disabled = false;
+    document.getElementById("f_statutBox").style.display = "none";
+    document.getElementById("f_nature").value = "Client";
+    document.getElementById("f_societe").value = "";
+    remplirSelectQui("f_qui");
+    onChangeNature();
+    document.getElementById("modalOverlay").classList.add("open");
+  }
+
+  function ouvrirModalFournisseurLie(idClient) {
+    const dClient = dossiers.find(x => x.id === idClient);
+    ouvrirModal();
+    dossierLieEnCours = idClient;
+    document.getElementById("f_nature").value = "Fournisseur";
+    onChangeNature();
+    if (dClient) {
+      document.getElementById("f_notes").value = "Lié à la demande client : " + dClient.client;
+    }
+  }
+
+  function ouvrirModalEdition(id) {
+    const d = dossiers.find(x => x.id === id);
+    if (!d) return;
+    dossierEnCoursEdition = id;
+    dossierLieEnCours = null;
+    document.getElementById("modalTitle").textContent = "Modifier le dossier";
+    document.getElementById("modalSubmitBtn").textContent = "Enregistrer les modifications";
+    document.getElementById("modalSubmitBtn").onclick = enregistrerModification;
+    document.getElementById("modalSubmitBtn").disabled = false;
+    document.getElementById("f_statutBox").style.display = "block";
+    remplirSelectQui("f_qui");
+
+    document.getElementById("f_client").value = d.client || "";
+    document.getElementById("f_clientEmail").value = d.clientEmail || "";
+    document.getElementById("f_clientTelephone").value = d.clientTelephone || "";
+    document.getElementById("f_nature").value = d.nature || "Client";
+    document.getElementById("f_societe").value = d.societe || "";
+    onChangeNature();
+    if (d.nature === "Fournisseur") {
+      document.getElementById("f_type_fournisseur").value = d.type || "Visite commerciale";
+      onChangeTypeFournisseur();
+      document.getElementById("f_montantAvoir").value = d.montantAvoir || "";
+    } else {
+      document.getElementById("f_type").value = d.type || "Commande";
+    }
+    document.getElementById("f_canal").value = d.canal || "Téléphone";
+    document.getElementById("f_ref").value = d.refOrthopmust || "";
+    document.getElementById("f_referentType").value = d.referentType || "";
+    document.getElementById("f_referentNom").value = d.referentNom || "";
+    document.getElementById("f_referentContact").value = d.referentContact || "";
+    document.getElementById("f_etablissement").value = d.etablissement || "";
+    document.getElementById("f_rdv").value = "";
+    document.getElementById("f_notes").value = d.notes || "";
+    document.getElementById("f_statut").value = d.statut || "Nouveau";
+
+    const select = document.getElementById("f_salarie_select");
+    select.value = salaries.some(s => s.email === d.email) ? d.email : "";
+    document.getElementById("nouveauSalarieBox").style.display = "none";
+    document.getElementById("f_salarie").value = d.salarie || "";
+    document.getElementById("f_email").value = d.email || "";
+
+    document.getElementById("modalOverlay").classList.add("open");
+  }
+
+  function fermerModal() {
+    document.getElementById("modalOverlay").classList.remove("open");
+    ["f_client","f_clientEmail","f_clientTelephone","f_salarie","f_email","f_rdv","f_ref","f_societe","f_montantAvoir","f_referentType","f_referentNom","f_referentContact","f_etablissement","f_notes"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("f_salarie_select").value = "";
+    document.getElementById("nouveauSalarieBox").style.display = "none";
+    dossierEnCoursEdition = null;
+  }
+  function fermerModalSiFond(e) {
+    if (e.target.id === "modalOverlay") fermerModal();
+  }
+
+  function remplirListeSalaries() {
+    const select = document.getElementById("f_salarie_select");
+    const valeurActuelle = select.value;
+    select.innerHTML = '<option value="">— Choisir —</option>';
+    salaries.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.email;
+      opt.textContent = s.nom;
+      opt.dataset.nom = s.nom;
+      select.appendChild(opt);
+    });
+    const optNouveau = document.createElement("option");
+    optNouveau.value = "__nouveau__";
+    optNouveau.textContent = "+ Nouveau salarié...";
+    select.appendChild(optNouveau);
+    select.value = valeurActuelle && salaries.some(s => s.email === valeurActuelle) ? valeurActuelle : "";
+  }
+
+  function selectionnerSalarie() {
+    const select = document.getElementById("f_salarie_select");
+    const val = select.value;
+    if (val === "__nouveau__") {
+      document.getElementById("nouveauSalarieBox").style.display = "block";
+      document.getElementById("f_salarie").value = "";
+      document.getElementById("f_email").value = "";
+      return;
+    }
+    document.getElementById("nouveauSalarieBox").style.display = "none";
+    const selectedOption = select.options[select.selectedIndex];
+    document.getElementById("f_salarie").value = selectedOption ? (selectedOption.dataset.nom || "") : "";
+    document.getElementById("f_email").value = val;
+  }
+
+  async function ajouterSalarie() {
+    const nom = document.getElementById("f_nouveau_nom").value.trim();
+    const email = document.getElementById("f_nouveau_email").value.trim();
+    if (!nom || !email) {
+      alert("Merci de renseigner le nom et l'email du nouveau salarié.");
+      return;
+    }
+    afficherMessage("Ajout du salarié...");
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ token: ACCESS_TOKEN, action: "addSalarie", nom, email })
+      });
+      const data = await res.json();
+      if (data.error) { afficherMessage(data.error, true); return; }
+      salaries.push({ nom, email });
+      remplirListeSalaries();
+      document.getElementById("f_salarie_select").value = email;
+      document.getElementById("f_salarie").value = nom;
+      document.getElementById("f_email").value = email;
+      document.getElementById("nouveauSalarieBox").style.display = "none";
+      document.getElementById("f_nouveau_nom").value = "";
+      document.getElementById("f_nouveau_email").value = "";
+      afficherMessage("Salarié ajouté à la liste.");
+    } catch (err) {
+      afficherMessage("Erreur lors de l'ajout du salarié.", true);
+    }
+  }
+
+  async function creerDossier() {
+    const btn = document.getElementById("modalSubmitBtn");
+    if (btn.disabled) return; // déjà en cours de traitement, on ignore le clic
+    const qui = document.getElementById("f_qui").value;
+    if (!qui) { alert("Merci d'indiquer votre nom avant de continuer."); return; }
+    const client = document.getElementById("f_client").value.trim();
+    const clientEmail = document.getElementById("f_clientEmail").value.trim();
+    const clientTelephone = document.getElementById("f_clientTelephone").value.trim();
+    const nature = document.getElementById("f_nature").value;
+    const societe = document.getElementById("f_societe").value.trim();
+    const type = nature === "Fournisseur"
+      ? document.getElementById("f_type_fournisseur").value
+      : document.getElementById("f_type").value;
+    const montantAvoir = document.getElementById("f_montantAvoir").value.trim();
+    const canal = document.getElementById("f_canal").value;
+    const ref = document.getElementById("f_ref").value.trim();
+    const referentType = document.getElementById("f_referentType").value;
+    const referentNom = document.getElementById("f_referentNom").value.trim();
+    const referentContact = document.getElementById("f_referentContact").value.trim();
+    const etablissement = document.getElementById("f_etablissement").value.trim();
+    const salarie = document.getElementById("f_salarie").value.trim();
+    const email = document.getElementById("f_email").value.trim();
+    const rdv = document.getElementById("f_rdv").value; // format "2026-09-01T14:30" ou ""
+    const notes = document.getElementById("f_notes").value.trim();
+
+    if (!client || !salarie || !email) {
+      alert("Merci de renseigner au minimum le nom du contact, le salarié assigné et son email.");
+      return;
+    }
+
+    afficherMessage("Création en cours...");
+    btn.disabled = true;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ token: ACCESS_TOKEN, action: "add", client, type, salarie, email, notes, clientEmail, clientTelephone, rdvDateTime: rdv || undefined, canal, refOrthopmust: ref, creePar: qui, nature, societe, montantAvoir, dossierLie: dossierLieEnCours, referentType, referentNom, referentContact, etablissement })
+      });
+      const data = await res.json();
+      if (data.error) { afficherMessage(data.error, true); return; }
+      dossierLieEnCours = null;
+      fermerModal();
+      afficherMessage("Dossier créé.");
+      chargerDossiers();
+    } catch (err) {
+      afficherMessage("Erreur lors de la création.", true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  let dossierEnCoursCloture = null;
+
+  function cloturerDossier(id) {
+    const d = dossiers.find(x => x.id === id);
+    const estFournisseur = d && d.nature === "Fournisseur";
+    dossierEnCoursCloture = id;
+    document.getElementById("clotureSubmitBtn").disabled = false;
+    remplirSelectQui("c_qui");
+    document.getElementById("c_repondreBox").style.display = (d && (d.clientEmail || d.clientTelephone)) ? "flex" : "none";
+    document.getElementById("c_repondreBtn").style.display = (d && d.clientEmail) ? "inline-block" : "none";
+    document.getElementById("c_repondreBtn").textContent = "✉️ Répondre à " + (d ? (d.client || "l'émetteur") : "l'émetteur");
+    document.getElementById("c_smsBtn").style.display = (d && d.clientTelephone) ? "inline-block" : "none";
+    document.getElementById("c_smsBtn").textContent = "💬 SMS à " + (d ? (d.client || "l'émetteur") : "l'émetteur");
+    document.getElementById("c_suite").style.display = estFournisseur ? "none" : "block";
+    document.getElementById("c_suite_fournisseur").style.display = estFournisseur ? "block" : "none";
+    document.getElementById("c_suite").value = "Commande passée";
+    document.getElementById("c_suite_fournisseur").value = "Avoir reçu";
+    document.getElementById("c_relanceBox").style.display = "none";
+    document.getElementById("c_autreBox").style.display = "none";
+    document.getElementById("c_relanceDate").value = "";
+    document.getElementById("c_autreTexte").value = "";
+    document.getElementById("c_precisions").value = "";
+    document.getElementById("clotureModalOverlay").classList.add("open");
+  }
+
+  function fermerModalCloture() {
+    document.getElementById("clotureModalOverlay").classList.remove("open");
+    dossierEnCoursCloture = null;
+  }
+
+  function fermerModalSiFondCloture(e) {
+    if (e.target.id === "clotureModalOverlay") fermerModalCloture();
+  }
+
+  function onChangeSuite() {
+    const suiteVisible = document.getElementById("c_suite").style.display !== "none" ? "c_suite" : "c_suite_fournisseur";
+    const val = document.getElementById(suiteVisible).value;
+    document.getElementById("c_relanceBox").style.display = val === "À relancer" ? "block" : "none";
+    document.getElementById("c_autreBox").style.display = val === "Autre" ? "block" : "none";
+  }
+
+  function repondreEmetteur() {
+    const d = dossiers.find(x => x.id === dossierEnCoursCloture);
+    if (!d || !d.clientEmail) {
+      alert("Aucun email connu pour ce contact.");
+      return;
+    }
+    const suiteVisible = document.getElementById("c_suite").style.display !== "none" ? "c_suite" : "c_suite_fournisseur";
+    let suiteChoisie = document.getElementById(suiteVisible).value;
+    if (suiteChoisie === "Autre") {
+      const texte = document.getElementById("c_autreTexte").value.trim();
+      if (texte) suiteChoisie = texte;
+    }
+    const precisions = document.getElementById("c_precisions").value.trim();
+    const corps = `Bonjour,\n\nConcernant votre demande (${d.type || ""}) : ${suiteChoisie}.${precisions ? "\n\n" + precisions : ""}\n\nCordialement,\nMEDITEC`;
+    window.location.href = `mailto:${d.clientEmail}?subject=${encodeURIComponent("Suite à votre demande - MEDITEC")}&body=${encodeURIComponent(corps)}`;
+  }
+
+  function repondreEmetteurSMS() {
+    const d = dossiers.find(x => x.id === dossierEnCoursCloture);
+    if (!d || !d.clientTelephone) {
+      alert("Aucun téléphone connu pour ce contact.");
+      return;
+    }
+    const suiteVisible = document.getElementById("c_suite").style.display !== "none" ? "c_suite" : "c_suite_fournisseur";
+    let suiteChoisie = document.getElementById(suiteVisible).value;
+    if (suiteChoisie === "Autre") {
+      const texte = document.getElementById("c_autreTexte").value.trim();
+      if (texte) suiteChoisie = texte;
+    }
+    const texteSms = `Bonjour, concernant votre demande MEDITEC : ${suiteChoisie}. Cordialement.`;
+    window.location.href = `sms:${d.clientTelephone.replace(/\s+/g,'')}?&body=${encodeURIComponent(texteSms)}`;
+  }
+
+  async function confirmerCloture() {
+    const btn = document.getElementById("clotureSubmitBtn");
+    if (btn.disabled) return;
+    const qui = document.getElementById("c_qui").value;
+    if (!qui) { alert("Merci d'indiquer votre nom avant de continuer."); return; }
+    const suiteVisible = document.getElementById("c_suite").style.display !== "none" ? "c_suite" : "c_suite_fournisseur";
+    const suiteChoisie = document.getElementById(suiteVisible).value;
+    const precisions = document.getElementById("c_precisions").value.trim();
+    let suiteDonnee = suiteChoisie;
+    let relancerLe = null;
+
+    if (suiteChoisie === "Autre") {
+      const texte = document.getElementById("c_autreTexte").value.trim();
+      if (!texte) { alert("Merci de préciser la suite donnée."); return; }
+      suiteDonnee = texte;
+    }
+    if (suiteChoisie === "À relancer") {
+      const date = document.getElementById("c_relanceDate").value;
+      if (!date) { alert("Merci d'indiquer une date de relance."); return; }
+      relancerLe = date;
+      suiteDonnee = "À relancer le " + new Date(date).toLocaleDateString("fr-FR");
+    }
+    if (precisions) suiteDonnee += " — " + precisions;
+
+    afficherMessage("Mise à jour...");
+    btn.disabled = true;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ token: ACCESS_TOKEN, action: "close", id: dossierEnCoursCloture, suiteDonnee, relancerLe, modifiePar: qui })
+      });
+      const data = await res.json();
+      if (data.error) { afficherMessage(data.error, true); return; }
+      fermerModalCloture();
+      chargerDossiers();
+    } catch (err) {
+      afficherMessage("Erreur lors de la mise à jour.", true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function enregistrerModification() {
+    const btn = document.getElementById("modalSubmitBtn");
+    if (btn.disabled) return;
+    const qui = document.getElementById("f_qui").value;
+    if (!qui) { alert("Merci d'indiquer votre nom avant de continuer."); return; }
+    const client = document.getElementById("f_client").value.trim();
+    const clientEmail = document.getElementById("f_clientEmail").value.trim();
+    const clientTelephone = document.getElementById("f_clientTelephone").value.trim();
+    const nature = document.getElementById("f_nature").value;
+    const societe = document.getElementById("f_societe").value.trim();
+    const type = nature === "Fournisseur"
+      ? document.getElementById("f_type_fournisseur").value
+      : document.getElementById("f_type").value;
+    const montantAvoir = document.getElementById("f_montantAvoir").value.trim();
+    const canal = document.getElementById("f_canal").value;
+    const ref = document.getElementById("f_ref").value.trim();
+    const referentType = document.getElementById("f_referentType").value;
+    const referentNom = document.getElementById("f_referentNom").value.trim();
+    const referentContact = document.getElementById("f_referentContact").value.trim();
+    const etablissement = document.getElementById("f_etablissement").value.trim();
+    const salarie = document.getElementById("f_salarie").value.trim();
+    const email = document.getElementById("f_email").value.trim();
+    const notes = document.getElementById("f_notes").value.trim();
+    const statut = document.getElementById("f_statut").value;
+
+    if (!client || !salarie || !email) {
+      alert("Merci de renseigner au minimum le nom du contact, le salarié assigné et son email.");
+      return;
+    }
+
+    afficherMessage("Enregistrement...");
+    btn.disabled = true;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          token: ACCESS_TOKEN, action: "modifier", id: dossierEnCoursEdition,
+          client, type, canal, salarie, email, notes, clientEmail, clientTelephone,
+          refOrthopmust: ref, statut, modifiePar: qui, nature, societe, montantAvoir,
+          referentType, referentNom, referentContact, etablissement
+        })
+      });
+      const data = await res.json();
+      if (data.error) { afficherMessage(data.error, true); return; }
+      fermerModal();
+      chargerDossiers();
+    } catch (err) {
+      afficherMessage("Erreur lors de l'enregistrement.", true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function remplirSelectQui(selectId) {
+    const select = document.getElementById(selectId);
+    select.innerHTML = '<option value="">— Qui êtes-vous ? —</option>';
+    salaries.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.nom;
+      opt.textContent = s.nom;
+      select.appendChild(opt);
+    });
+  }
+
+  chargerDossiers();
+</script>
+
+</body>
+</html>
